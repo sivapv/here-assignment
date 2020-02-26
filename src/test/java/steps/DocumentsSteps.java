@@ -41,7 +41,7 @@ public class DocumentsSteps {
             ((JavascriptExecutor) driver).executeScript("arguments[0].click();", elm);
             Thread.sleep(4000);
             driver.navigate().back();
-            Thread.sleep(4000);
+            waitForAngular();
         }
     }
 
@@ -49,5 +49,20 @@ public class DocumentsSteps {
     public WebElement getElementWithIndex(By by, int index) {
         List<WebElement> elements = driver.findElements(By.tagName("a"));
         return elements.get(index);
+    }
+
+   public void waitForAngular() {
+        final String javaScriptToLoadAngular =
+                "var injector = window.angular.element('body').injector();" + 
+                "var $http = injector.get('$http');" + 
+                "return ($http.pendingRequests.length === 0)";
+
+        ExpectedCondition<Boolean> pendingHttpCallsCondition = new ExpectedCondition<Boolean>() {
+            public Boolean apply(WebDriver driver) {
+                return ((JavascriptExecutor) driver).executeScript(javaScriptToLoadAngular).equals(true);
+            }
+        };
+        WebDriverWait wait = new WebDriverWait(driver, 20);
+        wait.until(pendingHttpCallsCondition);
     }
 }
