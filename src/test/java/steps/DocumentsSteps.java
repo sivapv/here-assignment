@@ -2,6 +2,8 @@ package steps;
 
 import io.cucumber.java.en.Given;
 import io.github.bonigarcia.wdm.WebDriverManager;
+import io.restassured.RestAssured;
+import org.junit.Assert;
 import org.openqa.selenium.*;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.interactions.Action;
@@ -50,12 +52,13 @@ public class DocumentsSteps {
         WebElement elm = null;
         for (String txt : linkText) {
             getClickableElement("(//a[contains(@href,'documentation#')][contains(text(),'" + txt + "')])[2]").click();
+
+            Assert.assertTrue(RestAssured.get(driver.getCurrentUrl()).statusCode() == 200);
             System.out.println("Clicked link: " + txt);
             waitForPageToLoad();
             driver.get("https://developer.here.com/");
             waitForPageToLoad();
             WebDriverWait wait = new WebDriverWait(driver, 20);
-            wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("(//a[contains(.,'Documentation')])[1]")));
             elm=getClickableElement("//a[contains(.,'Documentation')]");
             act = new Actions(driver);
             act.moveToElement(elm).build().perform();
