@@ -2,15 +2,17 @@ package steps;
 
 import io.cucumber.java.en.Given;
 import io.github.bonigarcia.wdm.WebDriverManager;
-import org.openqa.selenium.By;
-import org.openqa.selenium.JavascriptExecutor;
-import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.WebElement;
+import org.openqa.selenium.*;
 import org.openqa.selenium.chrome.ChromeDriver;
-import org.openqa.selenium.support.ui.WebDriverWait;
+import org.openqa.selenium.interactions.Action;
+import org.openqa.selenium.interactions.Actions;
+import org.openqa.selenium.support.ui.*;
 
+import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+
 
 public class DocumentsSteps {
     WebDriver driver = null;
@@ -19,7 +21,7 @@ public class DocumentsSteps {
     public void user_opens_browser() {
         WebDriverManager.chromedriver().setup();
         driver = new ChromeDriver();
-        driver.manage().window().maximize();
+//        driver.manage().window().maximize();
         driver.manage().timeouts().implicitlyWait(30, TimeUnit.SECONDS);
     }
 
@@ -30,39 +32,59 @@ public class DocumentsSteps {
 
     @Given("^user clicks documentation link$")
     public void user_clicks_documentation_link() throws Throwable {
-        Thread.sleep(3000);
-        driver.findElement(By.xpath("(//a[contains(.,'Documentation')])[3]")).click();
-//        WebDriverWait wait = new WebDriverWait(driver,30);
-        List<WebElement> links = driver.findElements(By.tagName("a"));
+        waitForPageToLoad();
+        WebElement docTab = driver.findElement(By.xpath("(//a[contains(.,'Documentation')])[3]"));
+        Actions act = new Actions(driver);
+        act.moveToElement(docTab).build().perform();
+
+        List<WebElement> links = driver.findElements(By.xpath("//a[contains(@href,'documentation#')]"));
+        List<String> linkText = new ArrayList<>();
         int sizeOfAllLinks = links.size();
-        WebElement elm= null;
-        for (int index=0; index<sizeOfAllLinks; index++ ) {
-            elm = getElementWithIndex(By.tagName("a"), index);
-            ((JavascriptExecutor) driver).executeScript("arguments[0].click();", elm);
-            Thread.sleep(4000);
-            driver.navigate().back();
-            waitForAngular();
+        System.out.println("Total Links: " + sizeOfAllLinks);
+        int count = 0;
+        for (WebElement elm : links) {
+            if (elm.getText().length() > 0) {
+                linkText.add(elm.getText());
+            }
         }
+        WebElement elm = null;
+        for (String txt : linkText) {
+            getClickableElement("(//a[contains(@href,'documentation#')][contains(text(),'" + txt + "')])[2]").click();
+            System.out.println("Clicked link: " + txt);
+            waitForPageToLoad();
+            driver.get("https://developer.here.com/");
+            waitForPageToLoad();
+            WebDriverWait wait = new WebDriverWait(driver, 20);
+            wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("(//a[contains(.,'Documentation')])[1]")));
+            elm=getClickableElement("//a[contains(.,'Documentation')]");
+            act = new Actions(driver);
+            act.moveToElement(elm).build().perform();
+        }
+
+    }
+
+    public WebElement getClickableElement(String xp) {
+        List<WebElement> elements = driver.findElements(By.xpath(xp));
+        for (WebElement element : elements) {
+            if (element.isDisplayed() && element.isEnabled()) {
+                return element;
+            }
+        }
+        return null;
     }
 
 
-    public WebElement getElementWithIndex(By by, int index) {
-        List<WebElement> elements = driver.findElements(By.tagName("a"));
-        return elements.get(index);
-    }
-
-   public void waitForAngular() {
-        final String javaScriptToLoadAngular =
-                "var injector = window.angular.element('body').injector();" + 
-                "var $http = injector.get('$http');" + 
-                "return ($http.pendingRequests.length === 0)";
-
-        ExpectedCondition<Boolean> pendingHttpCallsCondition = new ExpectedCondition<Boolean>() {
+    public void waitForPageToLoad() {
+        ExpectedCondition<Boolean> javascriptDone = new ExpectedCondition<Boolean>() {
             public Boolean apply(WebDriver driver) {
-                return ((JavascriptExecutor) driver).executeScript(javaScriptToLoadAngular).equals(true);
+                try {
+                    return ((JavascriptExecutor) driver).executeScript("return document.readyState").equals("complete");
+                } catch (Exception e) {
+                    return Boolean.FALSE;
+                }
             }
         };
-        WebDriverWait wait = new WebDriverWait(driver, 20);
-        wait.until(pendingHttpCallsCondition);
+        WebDriverWait wait = new WebDriverWait(driver, 100);
+        wait.until(javascriptDone);
     }
 }
